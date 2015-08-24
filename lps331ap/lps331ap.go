@@ -22,5 +22,5 @@ func main() {
 	pressure, _ := device.Pressure()
 	temperature, _ := device.Temperature()
 
-	fmt.Printf("%.2f \t%.2f\n", pressure, temperature)
+	fmt.Printf("%.4f \t%.4f\n", pressure, temperature)
 }
