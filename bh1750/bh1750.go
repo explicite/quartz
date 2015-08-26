@@ -17,10 +17,6 @@ func transaction(f func() error) {
 	}
 }
 
-func init() {
-	flag.Parse()
-}
-
 func getOutChan(sampling float64, b *bh1750.BH1750) <-chan float64 {
 	tmpChan := make(chan float64)
 	delay := 1 / sampling
@@ -33,6 +29,10 @@ func getOutChan(sampling float64, b *bh1750.BH1750) <-chan float64 {
 	}()
 
 	return tmpChan
+}
+
+func init() {
+	flag.Parse()
 }
 
 func main() {
