@@ -97,7 +97,6 @@ func main() {
 
 	out := out(l, b)
 	for {
-		println(<-out)
 		msg := []byte(<-out)
 		resp, err := http.Post("http://localhost:8086/write?db=quartz", "text/plain", bytes.NewBuffer(msg))
 		if err != nil {
