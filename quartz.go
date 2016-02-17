@@ -68,7 +68,7 @@ func out(l *lps331ap.LPS331AP, b *bh1750.BH1750) <-chan string {
 		for {
 			temp, _ := l.Temperature()
 			press, _ := l.Pressure()
-			lux, _ := b.Lux(bh1750.CON_H_RES_1LX)
+			lux, _ := b.Lux(bh1750.ConHRes1lx)
 			str := fmt.Sprintf(
 				"%s quantity=tmp value=%f\n%s quantity=press value=%f\n%s quantity=lux value=%f",
 				*mes, temp, *mes, press, *mes, lux)
