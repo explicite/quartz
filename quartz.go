@@ -13,6 +13,7 @@ import (
 
 	"github.com/explicite/i2c/bh1750"
 	"github.com/explicite/i2c/lps331ap"
+	"github.com/explicite/i2c/si7021"
 )
 
 var tick = flag.Float64("tick", float64(3600), "tick in sec")
@@ -62,16 +63,17 @@ func Logging(
 		log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-func out(l *lps331ap.LPS331AP, b *bh1750.BH1750) <-chan string {
+func out(l *lps331ap.LPS331AP, b *bh1750.BH1750, s *si7021.SI7021) <-chan string {
 	tmp := make(chan string)
 	go func() {
 		for {
 			temp, _ := l.Temperature()
 			press, _ := l.Pressure()
 			lux, _ := b.Lux(bh1750.ConHRes1lx)
+			rh, _ := s.RelativeHumidity(false)
 			str := fmt.Sprintf(
-				"%s quantity=tmp value=%f\n%s quantity=press value=%f\n%s quantity=lux value=%f",
-				*mes, temp, *mes, press, *mes, lux)
+				"%s quantity=tmp value=%f\n%s quantity=press value=%f\n%s quantity=lux value=%f\n%s quantity=rh value=%f",
+				*mes, temp, *mes, press, *mes, lux, *mes, rh)
 			tmp <- str
 			time.Sleep(time.Duration(*tick) * time.Second)
 		}
@@ -95,7 +97,12 @@ func main() {
 	transaction(b.Active)
 	defer b.Deactive()
 
-	out := out(l, b)
+	Trace.Println("si7021 initialization")
+	s := &si7021.SI7021{}
+	transaction(func() error { return s.Init(0x40, 1) })
+	transaction(s.Active)
+	defer s.Deactive()
+	out := out(l, b, s)
 	for {
 		msg := []byte(<-out)
 		resp, err := http.Post("http://localhost:8086/write?db=quartz", "text/plain", bytes.NewBuffer(msg))
