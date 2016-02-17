@@ -87,19 +87,19 @@ func main() {
 
 	Trace.Println("lps331AP initialization")
 	l := &lps331ap.LPS331AP{}
-	transaction(func() error { return l.Init(0x5d, 1) })
+	transaction(func() error { return l.Init(0x5d, 0x01) })
 	transaction(l.Active)
 	defer l.Deactive()
 
 	Trace.Println("bh1750 initialization")
 	b := &bh1750.BH1750{}
-	transaction(func() error { return b.Init(0x23, 1) })
+	transaction(func() error { return b.Init(0x23, 0x01) })
 	transaction(b.Active)
 	defer b.Deactive()
 
 	Trace.Println("si7021 initialization")
 	s := &si7021.SI7021{}
-	transaction(func() error { return s.Init(0x40, 1) })
+	transaction(func() error { return s.Init(0x40, 0x01) })
 	transaction(s.Active)
 	defer s.Deactive()
 	out := out(l, b, s)
