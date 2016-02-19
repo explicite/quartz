@@ -22,7 +22,7 @@ func getOutChan(sampling float64, b *bh1750.BH1750) <-chan float64 {
 	delay := 1 / sampling
 	go func() {
 		for {
-			lux, _ := b.Lux(bh1750.CON_H_RES_1LX)
+			lux, _ := b.Lux(bh1750.ConHRes1lx)
 			tmpChan <- float64(lux)
 			time.Sleep(time.Second * time.Duration(delay))
 		}
