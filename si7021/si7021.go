@@ -28,6 +28,8 @@ func getOutChan(sampling float64, s *si7021.SI7021) <-chan client.Point {
 			tags := map[string]string{
 				"sensor": "si7021",
 				"type":   "weather",
+				"rh":     "%",
+				"tmp":    "°C",
 			}
 
 			fields := map[string]interface{}{
