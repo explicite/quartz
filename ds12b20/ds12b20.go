@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/influxdata/influxdb/client/v2"
 	"io/ioutil"
 	"log"
 	"strconv"
@@ -24,9 +25,9 @@ type ds18b20 struct {
 }
 
 //Return out chan with sampling in Hz
-func (this *ds18b20) getOutChan(sampling float64) <-chan float64 {
+func (this *ds18b20) getOutChan(sampling float64) <-chan client.Point {
 	file := fmt.Sprintf("/sys/bus/w1/devices/%s/w1_slave", this.ID)
-	tempChan := make(chan float64)
+	points := make(chan client.Point)
 	delay := 1 / sampling
 
 	go func() {
@@ -36,25 +37,38 @@ func (this *ds18b20) getOutChan(sampling float64) <-chan float64 {
 				log.Fatal(err)
 			}
 			result := string(content)
-			tempString := result[len(result)-6 : len(result)-1]
-			temp, err := strconv.Atoi(tempString)
+			tmpStr := result[len(result)-6 : len(result)-1]
+			tmp, err := strconv.Atoi(tmpStr)
 			if err != nil {
 				log.Fatal(err)
 			}
-			tempChan <- float64(temp) / float64(1e3)
+
+			tags := map[string]string{
+				"sensor": "ds12b20",
+				"type":   "weather",
+				"tmp":    "°C",
+			}
+
+			fields := map[string]interface{}{
+				"tmp": float64(tmp) / float64(1e3),
+			}
+
+			point, _ := client.NewPoint("bs12b20", tags, fields, time.Now())
+			points <- *point
 			time.Sleep(time.Second * time.Duration(delay))
 		}
 	}()
 
-	return tempChan
+	return points
 }
 
 func main() {
-	device := new(ds18b20)
-	device.ID = *id
+	device := ds18b20{*id}
+
 	out := device.getOutChan(*sample)
 	for {
-		println(fmt.Sprintf("%f", <-out))
+		point := <-out
+		println(point.Fields())
 	}
 
 }
