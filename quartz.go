@@ -20,10 +20,10 @@ var tick = flag.Float64("tick", float64(3600), "tick in sec")
 var mes = flag.String("mes", "", "measurement")
 
 var (
-	Trace   *log.Logger
-	Info    *log.Logger
-	Warning *log.Logger
-	Error   *log.Logger
+	logTrace   *log.Logger
+	logInfo    *log.Logger
+	logWarning *log.Logger
+	logError   *log.Logger
 )
 
 func transaction(f func() error) {
@@ -46,19 +46,19 @@ func logging(
 	warningHandle io.Writer,
 	errorHandle io.Writer) {
 
-	Trace = log.New(traceHandle,
+	logTrace = log.New(traceHandle,
 		"TRACE: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 
-	Info = log.New(infoHandle,
+	logInfo = log.New(infoHandle,
 		"INFO: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 
-	Warning = log.New(warningHandle,
+	logWarning = log.New(warningHandle,
 		"WARNING: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 
-	Error = log.New(errorHandle,
+	logError = log.New(errorHandle,
 		"ERROR: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 }
@@ -75,7 +75,7 @@ func out(l *lps331ap.LPS331AP, b *bh1750.BH1750, s *si7021.SI7021) <-chan string
 				"%s quantity=tmp value=%f\n%s quantity=press value=%f\n%s quantity=lux value=%f\n%s quantity=rh value=%f",
 				*mes, temp, *mes, press, *mes, illu, *mes, rh)
 			tmp <- str
-			Trace.Println(str)
+			logTrace.Println(str)
 			time.Sleep(time.Duration(*tick) * time.Second)
 		}
 	}()
@@ -86,19 +86,19 @@ func out(l *lps331ap.LPS331AP, b *bh1750.BH1750, s *si7021.SI7021) <-chan string
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	Trace.Println("lps331AP initialization")
+	logTrace.Println("lps331AP initialization")
 	l := &lps331ap.LPS331AP{}
 	transaction(func() error { return l.Init(0x5d, 0x01) })
 	transaction(l.Active)
 	defer l.Deactive()
 
-	Trace.Println("bh1750 initialization")
+	logTrace.Println("bh1750 initialization")
 	b := &bh1750.BH1750{}
 	transaction(func() error { return b.Init(0x23, 0x01) })
 	transaction(b.Active)
 	defer b.Deactive()
 
-	Trace.Println("si7021 initialization")
+	logTrace.Println("si7021 initialization")
 	s := &si7021.SI7021{}
 	transaction(func() error { return s.Init(0x40, 0x01) })
 	transaction(s.Active)
@@ -108,9 +108,9 @@ func main() {
 		msg := []byte(<-out)
 		resp, err := http.Post("http://localhost:8086/write?db=quartz", "text/plain", bytes.NewBuffer(msg))
 		if err != nil {
-			Warning.Println(fmt.Sprintf("cannot send measurement:%v", err))
+			logWarning.Println(fmt.Sprintf("cannot send measurement:%v", err))
 		}
-		Info.Println(fmt.Sprintf("response:%v", resp))
+		logInfo.Println(fmt.Sprintf("response:%v", resp))
 
 	}
 }
