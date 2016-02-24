@@ -40,7 +40,7 @@ func init() {
 	}
 }
 
-func Logging(
+func logging(
 	traceHandle io.Writer,
 	infoHandle io.Writer,
 	warningHandle io.Writer,
@@ -84,7 +84,7 @@ func out(l *lps331ap.LPS331AP, b *bh1750.BH1750, s *si7021.SI7021) <-chan string
 }
 
 func main() {
-	Logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
+	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
 	Trace.Println("lps331AP initialization")
 	l := &lps331ap.LPS331AP{}

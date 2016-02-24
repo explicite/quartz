@@ -1,29 +1,25 @@
 package si7021
 
 import (
-	"flag"
 	"time"
 
 	"github.com/explicite/i2c/si7021"
 	"github.com/influxdata/influxdb/client/v2"
 )
 
-var sample = flag.Float64("sample", float64(1), "sampling frequency in Hz")
+// New channel with measure points from si7021.
+func New(addr byte, bus byte, sampling float64) <-chan client.Point {
+	device := &si7021.SI7021{}
+	device.Init(addr, bus)
+	device.Active()
+	defer device.Deactive()
 
-func transaction(f func() error) {
-	err := f()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func getOutChan(sampling float64, s *si7021.SI7021) <-chan client.Point {
 	points := make(chan client.Point)
 	delay := 1 / sampling
 	go func() {
 		for {
-			rh, _ := s.RelativeHumidity(false)
-			tmp, _ := s.Temperature(false)
+			rh, _ := device.RelativeHumidity(false)
+			tmp, _ := device.Temperature(false)
 
 			tags := map[string]string{
 				"sensor": "si7021",
@@ -44,22 +40,4 @@ func getOutChan(sampling float64, s *si7021.SI7021) <-chan client.Point {
 	}()
 
 	return points
-}
-
-func init() {
-	flag.Parse()
-}
-
-func main() {
-	device := &si7021.SI7021{}
-	transaction(func() error { return device.Init(0x40, 1) })
-	transaction(device.Active)
-	defer device.Deactive()
-
-	out := getOutChan(*sample, device)
-	for {
-		point := <-out
-		println(point.Fields())
-	}
-
 }

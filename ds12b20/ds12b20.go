@@ -1,32 +1,18 @@
-package main
+package ds12b20
 
 import (
-	"flag"
 	"fmt"
-	"github.com/influxdata/influxdb/client/v2"
 	"io/ioutil"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/influxdata/influxdb/client/v2"
 )
 
-var id = flag.String("id", "", "ds12b20 id from /sys/bus/w1/devices")
-var sample = flag.Float64("sample", float64(1), "sampling frequency in Hz")
-
-func init() {
-	flag.Parse()
-	if *id == "" {
-		log.Fatal("set device id flag")
-	}
-}
-
-type ds18b20 struct {
-	ID string
-}
-
-//Return out chan with sampling in Hz
-func (this *ds18b20) getOutChan(sampling float64) <-chan client.Point {
-	file := fmt.Sprintf("/sys/bus/w1/devices/%s/w1_slave", this.ID)
+// New channel with measure points from ds12b20.
+func New(id string, sampling float64) <-chan client.Point {
+	file := fmt.Sprintf("/sys/bus/w1/devices/%s/w1_slave", id)
 	points := make(chan client.Point)
 	delay := 1 / sampling
 
@@ -60,15 +46,4 @@ func (this *ds18b20) getOutChan(sampling float64) <-chan client.Point {
 	}()
 
 	return points
-}
-
-func main() {
-	device := ds18b20{*id}
-
-	out := device.getOutChan(*sample)
-	for {
-		point := <-out
-		println(point.Fields())
-	}
-
 }
