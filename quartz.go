@@ -1,23 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"time"
+	"sync"
 
-	"github.com/explicite/i2c/bh1750"
-	"github.com/explicite/i2c/lps331ap"
-	"github.com/explicite/i2c/si7021"
+	"github.com/explicite/quartz/bh1750"
+	"github.com/explicite/quartz/lps331ap"
+	"github.com/explicite/quartz/si7021"
+	"github.com/influxdata/influxdb/client/v2"
 )
-
-var tick = flag.Float64("tick", float64(3600), "tick in sec")
-var mes = flag.String("mes", "", "measurement")
 
 var (
 	logTrace   *log.Logger
@@ -25,20 +19,6 @@ var (
 	logWarning *log.Logger
 	logError   *log.Logger
 )
-
-func transaction(f func() error) {
-	err := f()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func init() {
-	flag.Parse()
-	if *mes == "" {
-		panic("set measurement name")
-	}
-}
 
 func logging(
 	traceHandle io.Writer,
@@ -63,54 +43,44 @@ func logging(
 		log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-func out(l *lps331ap.LPS331AP, b *bh1750.BH1750, s *si7021.SI7021) <-chan string {
-	tmp := make(chan string)
-	go func() {
-		for {
-			temp, _ := l.Temperature()
-			press, _ := l.Pressure()
-			illu, _ := b.Illuminance(bh1750.ConHRes1lx)
-			rh, _ := s.RelativeHumidity(false)
-			str := fmt.Sprintf(
-				"%s quantity=tmp value=%f\n%s quantity=press value=%f\n%s quantity=lux value=%f\n%s quantity=rh value=%f",
-				*mes, temp, *mes, press, *mes, illu, *mes, rh)
-			tmp <- str
-			logTrace.Println(str)
-			time.Sleep(time.Duration(*tick) * time.Second)
-		}
-	}()
+func merge(cs ...<-chan client.Point) <-chan client.Point {
+	var wg sync.WaitGroup
+	out := make(chan client.Point)
 
-	return tmp
+	output := func(c <-chan client.Point) {
+		for n := range c {
+			out <- n
+		}
+		wg.Done()
+	}
+	wg.Add(len(cs))
+	for _, c := range cs {
+		go output(c)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }
 
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	logTrace.Println("lps331AP initialization")
-	l := &lps331ap.LPS331AP{}
-	transaction(func() error { return l.Init(0x5d, 0x01) })
-	transaction(l.Active)
-	defer l.Deactive()
+	sampling := 3600.0
 
-	logTrace.Println("bh1750 initialization")
-	b := &bh1750.BH1750{}
-	transaction(func() error { return b.Init(0x23, 0x01) })
-	transaction(b.Active)
-	defer b.Deactive()
+	logInfo.Println("lps331AP initialization")
+	l := lps331ap.New(0x5d, 0x01, sampling)
 
-	logTrace.Println("si7021 initialization")
-	s := &si7021.SI7021{}
-	transaction(func() error { return s.Init(0x40, 0x01) })
-	transaction(s.Active)
-	defer s.Deactive()
-	out := out(l, b, s)
-	for {
-		msg := []byte(<-out)
-		resp, err := http.Post("http://localhost:8086/write?db=quartz", "text/plain", bytes.NewBuffer(msg))
-		if err != nil {
-			logWarning.Println(fmt.Sprintf("cannot send measurement:%v", err))
-		}
-		logInfo.Println(fmt.Sprintf("response:%v", resp))
+	logInfo.Println("bh1750 initialization")
+	b := bh1750.New(0x23, 0x01, sampling)
 
+	logInfo.Println("si7021 initialization")
+	s := si7021.New(0x40, 0x01, sampling)
+
+	for point := range merge(l, b, s) {
+		//TODO send to influxdb
+		println(point.Fields())
 	}
 }

@@ -12,11 +12,11 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 	device := &si7021.SI7021{}
 	device.Init(addr, bus)
 	device.Active()
-	defer device.Deactive()
 
 	points := make(chan client.Point)
 	delay := 1 / sampling
 	go func() {
+		defer device.Deactive()
 		for {
 			rh, _ := device.RelativeHumidity(false)
 			tmp, _ := device.Temperature(false)
