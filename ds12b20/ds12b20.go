@@ -13,9 +13,8 @@ import (
 // New channel with measure points from ds12b20.
 func New(id string, sampling float64) <-chan client.Point {
 	file := fmt.Sprintf("/sys/bus/w1/devices/%s/w1_slave", id)
-	points := make(chan client.Point)
-	delay := 1 / sampling
 
+	points := make(chan client.Point)
 	go func() {
 		for {
 			content, err := ioutil.ReadFile(file)
@@ -41,7 +40,7 @@ func New(id string, sampling float64) <-chan client.Point {
 
 			point, _ := client.NewPoint("bs12b20", tags, fields, time.Now())
 			points <- *point
-			time.Sleep(time.Second * time.Duration(delay))
+			time.Sleep(time.Second * time.Duration(sampling))
 		}
 	}()
 

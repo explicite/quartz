@@ -68,7 +68,7 @@ func merge(cs ...<-chan client.Point) <-chan client.Point {
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	sampling := 3600.0
+	sampling := 2.0
 
 	logInfo.Println("lps331AP initialization")
 	l := lps331ap.New(0x5d, 0x01, sampling)

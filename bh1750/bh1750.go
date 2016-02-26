@@ -14,7 +14,6 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 	device.Active()
 
 	points := make(chan client.Point)
-	delay := 1 / sampling
 	go func() {
 		defer device.Deactive()
 		for {
@@ -32,7 +31,7 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 
 			point, _ := client.NewPoint("bh1750", tags, fields, time.Now())
 			points <- *point
-			time.Sleep(time.Second * time.Duration(delay))
+			time.Sleep(time.Second * time.Duration(sampling))
 		}
 	}()
 
