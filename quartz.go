@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -43,6 +44,30 @@ func logging(
 		log.Ldate|log.Ltime|log.Lshortfile)
 }
 
+var addr = flag.String("addr", "", "database addr")
+var db = flag.String("db", "", "database name")
+var user = flag.String("user", "", "database user")
+var pass = flag.String("pass", "", "database password")
+
+func init() {
+	flag.Parse()
+	if *addr == "" {
+		panic("set database addr")
+	}
+
+	if *db == "" {
+		panic("set database name")
+	}
+
+	if *user == "" {
+		panic("set database user")
+	}
+
+	if *pass == "" {
+		panic("set database pass")
+	}
+}
+
 func merge(cs ...<-chan client.Point) <-chan client.Point {
 	var wg sync.WaitGroup
 	out := make(chan client.Point)
@@ -68,7 +93,21 @@ func merge(cs ...<-chan client.Point) <-chan client.Point {
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	sampling := 2.0
+	sampling := 60.0
+
+	// Setup influxdb udp connection
+	// Make client
+	c, cErr := client.NewHTTPClient(client.HTTPConfig{
+		Addr:     *addr,
+		Username: *user,
+		Password: *pass,
+	})
+
+	if cErr != nil {
+		panic(cErr)
+	}
+
+	logInfo.Printf("influxdb connection established (%s, %s)\n", *addr, *user)
 
 	logInfo.Println("lps331AP initialization")
 	l := lps331ap.New(0x5d, 0x01, sampling)
@@ -79,8 +118,27 @@ func main() {
 	logInfo.Println("si7021 initialization")
 	s := si7021.New(0x40, 0x01, sampling)
 
-	for point := range merge(l, b, s) {
-		//TODO send to influxdb
-		println(point.Fields())
+	points := merge(l, b, s)
+	batchSize := 25
+
+	for {
+		// Create a new point batch
+		bp, bpErr := client.NewBatchPoints(client.BatchPointsConfig{
+			Database:  *db,
+			Precision: "s",
+		})
+
+		if bpErr != nil {
+			panic(bpErr)
+		}
+
+		for i := 0; i < batchSize; i++ {
+			p := <-points
+			bp.AddPoint(&p)
+		}
+
+		writeErr := c.Write(bp)
+		logInfo.Printf("Write batch points with result: %v", writeErr)
 	}
+
 }
