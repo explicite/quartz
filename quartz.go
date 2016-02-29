@@ -93,7 +93,7 @@ func merge(cs ...<-chan client.Point) <-chan client.Point {
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	sampling := 60.0
+	sampling := 30.0
 
 	// Setup influxdb udp connection
 	// Make client
@@ -119,7 +119,7 @@ func main() {
 	s := si7021.New(0x40, 0x01, sampling)
 
 	points := merge(l, b, s)
-	batchSize := 25
+	batchSize := 30
 
 	for {
 		// Create a new point batch
@@ -138,7 +138,9 @@ func main() {
 		}
 
 		writeErr := c.Write(bp)
-		logInfo.Printf("Write batch points with result: %v", writeErr)
+		if writeErr != nil {
+			logInfo.Printf("Write batch points with error: %v", writeErr)
+		}
 	}
 
 }

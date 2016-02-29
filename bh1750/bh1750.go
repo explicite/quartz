@@ -17,20 +17,23 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 	go func() {
 		defer device.Deactive()
 		for {
-			illu, _ := device.Illuminance(bh1750.ConHRes1lx)
+			illu, illuErr := device.Illuminance(bh1750.ConHRes1lx)
 
-			tags := map[string]string{
-				"sensor":      "bh1750",
-				"type":        "weather",
-				"illuminance": "lx",
+			if illuErr != nil {
+				tags := map[string]string{
+					"sensor":      "bh1750",
+					"type":        "weather",
+					"illuminance": "lx",
+				}
+
+				fields := map[string]interface{}{
+					"illu": illu,
+				}
+
+				point, _ := client.NewPoint("bh1750", tags, fields, time.Now())
+				points <- *point
 			}
 
-			fields := map[string]interface{}{
-				"illu": illu,
-			}
-
-			point, _ := client.NewPoint("bh1750", tags, fields, time.Now())
-			points <- *point
 			time.Sleep(time.Second * time.Duration(sampling))
 		}
 	}()
