@@ -20,7 +20,7 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 			press, pressErr := device.Pressure()
 			tmp, tmpErr := device.Temperature()
 
-			if pressErr != nil && tmpErr != nil {
+			if pressErr == nil && tmpErr == nil {
 				tags := map[string]string{
 					"sensor": "lps331ap",
 					"type":   "weather",

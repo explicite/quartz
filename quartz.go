@@ -93,7 +93,7 @@ func merge(cs ...<-chan client.Point) <-chan client.Point {
 func main() {
 	logging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 
-	sampling := 30.0
+	sampling := 60.0 //sec
 
 	// Setup influxdb udp connection
 	// Make client

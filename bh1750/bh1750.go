@@ -19,7 +19,7 @@ func New(addr byte, bus byte, sampling float64) <-chan client.Point {
 		for {
 			illu, illuErr := device.Illuminance(bh1750.ConHRes1lx)
 
-			if illuErr != nil {
+			if illuErr == nil {
 				tags := map[string]string{
 					"sensor":      "bh1750",
 					"type":        "weather",
